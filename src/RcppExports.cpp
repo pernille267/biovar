@@ -11,55 +11,26 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// rcpparma_hello_world
-arma::mat rcpparma_hello_world();
-RcppExport SEXP _biovar_rcpparma_hello_world() {
+// simulate_bv_data
+List simulate_bv_data(int n, int S, int R, double cvi, double cva, double cvg, double mu);
+RcppExport SEXP _biovar_simulate_bv_data(SEXP nSEXP, SEXP SSEXP, SEXP RSEXP, SEXP cviSEXP, SEXP cvaSEXP, SEXP cvgSEXP, SEXP muSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(rcpparma_hello_world());
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpparma_outerproduct
-arma::mat rcpparma_outerproduct(const arma::colvec& x);
-RcppExport SEXP _biovar_rcpparma_outerproduct(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::colvec& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpparma_outerproduct(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpparma_innerproduct
-double rcpparma_innerproduct(const arma::colvec& x);
-RcppExport SEXP _biovar_rcpparma_innerproduct(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::colvec& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpparma_innerproduct(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpparma_bothproducts
-Rcpp::List rcpparma_bothproducts(const arma::colvec& x);
-RcppExport SEXP _biovar_rcpparma_bothproducts(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::colvec& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpparma_bothproducts(x));
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type S(SSEXP);
+    Rcpp::traits::input_parameter< int >::type R(RSEXP);
+    Rcpp::traits::input_parameter< double >::type cvi(cviSEXP);
+    Rcpp::traits::input_parameter< double >::type cva(cvaSEXP);
+    Rcpp::traits::input_parameter< double >::type cvg(cvgSEXP);
+    Rcpp::traits::input_parameter< double >::type mu(muSEXP);
+    rcpp_result_gen = Rcpp::wrap(simulate_bv_data(n, S, R, cvi, cva, cvg, mu));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_biovar_rcpparma_hello_world", (DL_FUNC) &_biovar_rcpparma_hello_world, 0},
-    {"_biovar_rcpparma_outerproduct", (DL_FUNC) &_biovar_rcpparma_outerproduct, 1},
-    {"_biovar_rcpparma_innerproduct", (DL_FUNC) &_biovar_rcpparma_innerproduct, 1},
-    {"_biovar_rcpparma_bothproducts", (DL_FUNC) &_biovar_rcpparma_bothproducts, 1},
+    {"_biovar_simulate_bv_data", (DL_FUNC) &_biovar_simulate_bv_data, 7},
     {NULL, NULL, 0}
 };
 

@@ -13,7 +13,7 @@
 The DESCRIPTION file:
 \packageDESCRIPTION{biovar}
 \packageIndices{biovar}
-~~ An overview of how to use the package, including the most important functions ~~
+No
 }
 \author{
 \packageAuthor{biovar}
@@ -21,15 +21,13 @@ The DESCRIPTION file:
 Maintainer: \packageMaintainer{biovar}
 }
 \references{
-~~ Literature or other references for background information ~~
+Books
 }
-~~ Optionally other standard keywords, one per line, from file KEYWORDS in the R ~~
-~~ documentation directory ~~
 \keyword{ package }
 \seealso{
-~~ Optional links to other man pages, e.g. ~~
-~~ \code{\link[<pkg>:<pkg>-package]{<pkg>}} ~~
+Look at the horse. It does the work. Wow.
 }
 \examples{
-~~ simple examples of the most important functions ~~
+# Here you can print stuff
+print(1)
 }

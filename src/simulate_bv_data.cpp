@@ -27,15 +27,14 @@ using namespace Rcpp;
 //'
 //' @examples
 //' \dontrun{
-//' // Simulate data for 100 subjects, with 10 samples per subject and 3 replicates per sample
+//' # Simulate data for 100 subjects, with 10 samples per subject and 3 replicates per sample
 //' output <- simulate_bv_data(15, 10, 2, 10, 2, 50, 100)
-//' output <- as.data.table(output)
 //' print(output)
 //' }
 //'
 
 // [[Rcpp::export]]
-List simulate_bv_data(int n, int S = 10, int R = 2, double cvi = 10, double cva = 2, double cvg = 50, double mu) {
+List simulate_bv_data(int n, int S = 10, int R = 2, double cvi = 10, double cva = 2, double cvg = 50, double mu = 10) {
   // Set up vectors to store the results
   std::vector<int> SubjectID(n * S * R);
   std::vector<int> SampleID(n * S * R);
