@@ -11,6 +11,17 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// bv_anova
+List bv_anova(List data);
+RcppExport SEXP _biovar_bv_anova(SEXP dataSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type data(dataSEXP);
+    rcpp_result_gen = Rcpp::wrap(bv_anova(data));
+    return rcpp_result_gen;
+END_RCPP
+}
 // simulate_bv_data
 List simulate_bv_data(int n, int S, int R, double cvi, double cva, double cvg, double mu);
 RcppExport SEXP _biovar_simulate_bv_data(SEXP nSEXP, SEXP SSEXP, SEXP RSEXP, SEXP cviSEXP, SEXP cvaSEXP, SEXP cvgSEXP, SEXP muSEXP) {
@@ -30,6 +41,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_biovar_bv_anova", (DL_FUNC) &_biovar_bv_anova, 1},
     {"_biovar_simulate_bv_data", (DL_FUNC) &_biovar_simulate_bv_data, 7},
     {NULL, NULL, 0}
 };
