@@ -11,17 +11,32 @@
   \item \code{ReplicateID} - \code{Integer} vector with the IDs of the replicates.
   \item \code{y} - \code{Numeric} vector with the measured values for each combination of IDs.
 }}
+
+\item{cv_anova}{\code{logical}. If \code{TRUE}, CV-ANOVA is performed.}
 }
 \value{
 A \code{list} containing all relevant information for the nested ANOVA model fit.
 }
 \description{
-This function uses biological variation data to estimate both one-way (one model for each subject) and two-way (general model overall subjects) nested ANOVA models.
+This function uses biological variation data to estimate both one-way
+(one model for each subject) and two-way (general model overall subjects)
+nested ANOVA models.
 }
 \details{
 One Way and Two Way ANOVA Modelling Based on Biological Variation Data
 
-The components of the estimated model can be used to estimate intra biological variation, inter biological variation and analytical variation, with corresponding confidence intervals. The model estimates relies on that all model effects are mutually independent and normally distributed.
+
+The components of the estimated model can be used to estimate intra
+biological variation, inter biological variation and analytical variation,
+possibly with corresponding confidence intervals. The model estimates
+relies on that all model effects are mutually independent and normally
+distributed.
+
+We assume the following model
+\eqn{y_{isr} = \mu + G_i + I_{is} + A_{isr}}, where 
+\eqn{G_i \sim \mathrm{N}(0, \sigma_G^2)},
+\eqn{I_{is} \sim \mathrm{N}(0, \sigma_i^2)}, and
+\eqn{A_{isr} \sim \mathrm{N}(0, \sigma_A^2)}.
 }
 \examples{
 \dontrun{

@@ -13,6 +13,8 @@ using namespace Rcpp;
 //' @param cva \code{Double}. The coefficient of variation (in percent) for the variability of analytical error (default is 2). This is the source of variation between replicated measurements.
 //' @param cvg \code{Double}. The coefficient of variation (in percent) for variability between subjects (default is 50).
 //' @param mu \code{Double}. The overall true mean for the population (default is 100).
+//' @param hbhr \code{Double}. The Harris-Brown heterogeneity ratio (in percent) for the variability between within-subject standard deviaton.
+//' @param grand_mean \code{Boolean}. If set to \code{TRUE}, all SD-components are defined by (cv / 100) * mu. Otherwise, mu is replaced by subject-mean and sample-mean for within subject and within sample standard deviations.
 //'
 //' @description This function simulates biological variation data based on a specified number of subjects, samples, and replicates.
 //' @details This function generates simulated biological variation data. It first generates subject-specific means based on a normal distribution with mean `mu` and coefficient of variation `cvg`. For each subject, it then generates `S` samples based on their specific mean and the coefficient of variation `cvi`. Finally, for each sample, it generates `R` replicate measurements based on the sample mean and the coefficient of variation `cva`.
@@ -34,12 +36,14 @@ using namespace Rcpp;
 //'
 
 // [[Rcpp::export]]
-List simulate_bv_data(int n, int S = 10, int R = 2, double cvi = 10, double cva = 2, double cvg = 50, double mu = 10) {
+List simulate_bv_data(int n, int S = 10, int R = 2, double cvi = 10, double cva = 2, double cvg = 50, double mu = 100, double hbhr = 0, bool grand_mean = true) {
   // Set up vectors to store the results
   std::vector<int> SubjectID(n * S * R);
   std::vector<int> SampleID(n * S * R);
   std::vector<int> ReplicateID(n * S * R);
   std::vector<double> y(n * S * R);
+  
+  
   
   // Generate subjects
   std::vector<double> subjects(n);
@@ -48,19 +52,40 @@ List simulate_bv_data(int n, int S = 10, int R = 2, double cvi = 10, double cva 
   }
   
   // Generate samples and replicates
-  int idx = 0;
-  for(int i = 0; i < n; i++) {
-    for(int j = 0; j < S; j++) {
-      double sample = std::abs(R::rnorm(subjects[i], (cvi / 100.0) * subjects[i]));
-      for(int k = 0; k < R; k++) {
-        double replicate = std::abs(R::rnorm(sample, (cva / 100.0) * sample));
-        SubjectID[idx] = i + 1;
-        SampleID[idx] = j + 1;
-        ReplicateID[idx] = k + 1;
-        y[idx] = replicate;
-        idx++;
+  
+  if(!grand_mean){
+    int idx = 0;
+    for(int i = 0; i < n; i++) {
+      double sdi = std::abs(R::rnorm((cvi / 100.0) * subjects[i], (cvi / 100.0) * subjects[i] * (hbhr / 100.0)));
+      for(int j = 0; j < S; j++) {
+        double sample = std::abs(R::rnorm(subjects[i], sdi));
+        for(int k = 0; k < R; k++) {
+          double replicate = std::abs(R::rnorm(sample, (cva / 100.0) * sample));
+          SubjectID[idx] = i + 1;
+          SampleID[idx] = j + 1;
+          ReplicateID[idx] = k + 1;
+          y[idx] = replicate;
+          idx++;
+        }
       }
-    }
+    }  
+  }
+  else{
+    int idx = 0;
+    for(int i = 0; i < n; i++) {
+      double sdi = std::abs(R::rnorm((cvi / 100.0) * mu, (cvi / 100.0) * mu * (hbhr / 100.0)));
+      for(int j = 0; j < S; j++) {
+        double sample = std::abs(R::rnorm(subjects[i], sdi));
+        for(int k = 0; k < R; k++) {
+          double replicate = std::abs(R::rnorm(sample, (cva / 100.0) * mu));
+          SubjectID[idx] = i + 1;
+          SampleID[idx] = j + 1;
+          ReplicateID[idx] = k + 1;
+          y[idx] = replicate;
+          idx++;
+        }
+      }
+    }  
   }
   
   // Create a list to return

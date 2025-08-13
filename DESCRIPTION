@@ -1,13 +1,16 @@
 Package: biovar
 Type: Package
-Title: What the package does (short line)
+Title: Estimation of biological variation
 Version: 1.0
 Date: 2024-06-11
-Author: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
-Description: More about what it does (maybe more than one line)
+Author: Pernille Kjeilen Fauskanger
+Maintainer: Pernille Kjeilen Fauskanger <yourfault@somewhere.net>
+Description: Estimates biological variation components and allows for Monte Carlo simulations and Bayesian modelling
 License: MIT + file LICENSE
 Encoding: UTF-8
-Imports: Rcpp (>= 1.0.11)
+Imports: 
+  Rcpp (>= 1.0.11),
+  data.table,
+  ggplot2
 LinkingTo: Rcpp, RcppArmadillo
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.2

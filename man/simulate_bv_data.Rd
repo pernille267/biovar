@@ -17,6 +17,10 @@
 \item{cvg}{\code{Double}. The coefficient of variation (in percent) for variability between subjects (default is 50).}
 
 \item{mu}{\code{Double}. The overall true mean for the population (default is 100).}
+
+\item{hbhr}{\code{Double}. The Harris-Brown heterogeneity ratio (in percent) for the variability between within-subject standard deviaton.}
+
+\item{grand_mean}{\code{Boolean}. If set to \code{TRUE}, all SD-components are defined by (cv / 100) * mu. Otherwise, mu is replaced by subject-mean and sample-mean for within subject and within sample standard deviations.}
 }
 \value{
 A `list` with columns:

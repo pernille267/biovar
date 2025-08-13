@@ -3,22 +3,17 @@
 \alias{biovar}
 \docType{package}
 \title{
-\packageTitle{biovar}
+Estimation of biological variation
 }
 \description{
-\packageDescription{biovar}
+Estimates biological variation components utilizing two-fold nested ANOVA models, Bayesian modelling and Bootstrapping.
 }
 \details{
-
-The DESCRIPTION file:
-\packageDESCRIPTION{biovar}
-\packageIndices{biovar}
-No
+In order to streamline biological variation estimation based on BV data, this package will provide all necessary modern methods to do so.
 }
 \author{
-\packageAuthor{biovar}
-
-Maintainer: \packageMaintainer{biovar}
+Author: Pernille Kjeilen Fauskanger
+Maintainer: Pernille Kjeilen Fauskanger
 }
 \references{
 Books

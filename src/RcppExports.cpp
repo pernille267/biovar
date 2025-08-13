@@ -12,19 +12,81 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // bv_anova
-List bv_anova(List data);
-RcppExport SEXP _biovar_bv_anova(SEXP dataSEXP) {
+Rcpp::List bv_anova(Rcpp::List data, bool cv_anova);
+RcppExport SEXP _biovar_bv_anova(SEXP dataSEXP, SEXP cv_anovaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::List >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< bool >::type cv_anova(cv_anovaSEXP);
+    rcpp_result_gen = Rcpp::wrap(bv_anova(data, cv_anova));
+    return rcpp_result_gen;
+END_RCPP
+}
+// variance_components
+Rcpp::List variance_components(List data, std::string output_type, double mult, double level, bool cv_anova);
+RcppExport SEXP _biovar_variance_components(SEXP dataSEXP, SEXP output_typeSEXP, SEXP multSEXP, SEXP levelSEXP, SEXP cv_anovaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< List >::type data(dataSEXP);
-    rcpp_result_gen = Rcpp::wrap(bv_anova(data));
+    Rcpp::traits::input_parameter< std::string >::type output_type(output_typeSEXP);
+    Rcpp::traits::input_parameter< double >::type mult(multSEXP);
+    Rcpp::traits::input_parameter< double >::type level(levelSEXP);
+    Rcpp::traits::input_parameter< bool >::type cv_anova(cv_anovaSEXP);
+    rcpp_result_gen = Rcpp::wrap(variance_components(data, output_type, mult, level, cv_anova));
+    return rcpp_result_gen;
+END_RCPP
+}
+// bv_anova_bootstrap_ci
+List bv_anova_bootstrap_ci(List data_orig, int B, double level, std::string output_type_for_point_est, double mult);
+RcppExport SEXP _biovar_bv_anova_bootstrap_ci(SEXP data_origSEXP, SEXP BSEXP, SEXP levelSEXP, SEXP output_type_for_point_estSEXP, SEXP multSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type data_orig(data_origSEXP);
+    Rcpp::traits::input_parameter< int >::type B(BSEXP);
+    Rcpp::traits::input_parameter< double >::type level(levelSEXP);
+    Rcpp::traits::input_parameter< std::string >::type output_type_for_point_est(output_type_for_point_estSEXP);
+    Rcpp::traits::input_parameter< double >::type mult(multSEXP);
+    rcpp_result_gen = Rcpp::wrap(bv_anova_bootstrap_ci(data_orig, B, level, output_type_for_point_est, mult));
+    return rcpp_result_gen;
+END_RCPP
+}
+// process_stan_data_indexing
+Rcpp::List process_stan_data_indexing(Rcpp::CharacterVector SubjectID_orig_R, Rcpp::IntegerVector SampleID_orig_R, Rcpp::NumericVector y_R);
+RcppExport SEXP _biovar_process_stan_data_indexing(SEXP SubjectID_orig_RSEXP, SEXP SampleID_orig_RSEXP, SEXP y_RSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type SubjectID_orig_R(SubjectID_orig_RSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type SampleID_orig_R(SampleID_orig_RSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type y_R(y_RSEXP);
+    rcpp_result_gen = Rcpp::wrap(process_stan_data_indexing(SubjectID_orig_R, SampleID_orig_R, y_R));
+    return rcpp_result_gen;
+END_RCPP
+}
+// process_stan_data_priors
+List process_stan_data_priors(double beta, double cvi, double cva, double cvg, double dfi, double dfa, NumericVector strength, bool log_transformed);
+RcppExport SEXP _biovar_process_stan_data_priors(SEXP betaSEXP, SEXP cviSEXP, SEXP cvaSEXP, SEXP cvgSEXP, SEXP dfiSEXP, SEXP dfaSEXP, SEXP strengthSEXP, SEXP log_transformedSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< double >::type cvi(cviSEXP);
+    Rcpp::traits::input_parameter< double >::type cva(cvaSEXP);
+    Rcpp::traits::input_parameter< double >::type cvg(cvgSEXP);
+    Rcpp::traits::input_parameter< double >::type dfi(dfiSEXP);
+    Rcpp::traits::input_parameter< double >::type dfa(dfaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type strength(strengthSEXP);
+    Rcpp::traits::input_parameter< bool >::type log_transformed(log_transformedSEXP);
+    rcpp_result_gen = Rcpp::wrap(process_stan_data_priors(beta, cvi, cva, cvg, dfi, dfa, strength, log_transformed));
     return rcpp_result_gen;
 END_RCPP
 }
 // simulate_bv_data
-List simulate_bv_data(int n, int S, int R, double cvi, double cva, double cvg, double mu);
-RcppExport SEXP _biovar_simulate_bv_data(SEXP nSEXP, SEXP SSEXP, SEXP RSEXP, SEXP cviSEXP, SEXP cvaSEXP, SEXP cvgSEXP, SEXP muSEXP) {
+List simulate_bv_data(int n, int S, int R, double cvi, double cva, double cvg, double mu, double hbhr, bool grand_mean);
+RcppExport SEXP _biovar_simulate_bv_data(SEXP nSEXP, SEXP SSEXP, SEXP RSEXP, SEXP cviSEXP, SEXP cvaSEXP, SEXP cvgSEXP, SEXP muSEXP, SEXP hbhrSEXP, SEXP grand_meanSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -35,14 +97,43 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type cva(cvaSEXP);
     Rcpp::traits::input_parameter< double >::type cvg(cvgSEXP);
     Rcpp::traits::input_parameter< double >::type mu(muSEXP);
-    rcpp_result_gen = Rcpp::wrap(simulate_bv_data(n, S, R, cvi, cva, cvg, mu));
+    Rcpp::traits::input_parameter< double >::type hbhr(hbhrSEXP);
+    Rcpp::traits::input_parameter< bool >::type grand_mean(grand_meanSEXP);
+    rcpp_result_gen = Rcpp::wrap(simulate_bv_data(n, S, R, cvi, cva, cvg, mu, hbhr, grand_mean));
+    return rcpp_result_gen;
+END_RCPP
+}
+// simulate_bv_data_ntt
+Rcpp::List simulate_bv_data_ntt(int n, int S, int R, double cvi, double cva, double cvg, double mu, double hbhr, bool grand_mean, std::string subject_dist_type, double dfi, double dfa);
+RcppExport SEXP _biovar_simulate_bv_data_ntt(SEXP nSEXP, SEXP SSEXP, SEXP RSEXP, SEXP cviSEXP, SEXP cvaSEXP, SEXP cvgSEXP, SEXP muSEXP, SEXP hbhrSEXP, SEXP grand_meanSEXP, SEXP subject_dist_typeSEXP, SEXP dfiSEXP, SEXP dfaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type S(SSEXP);
+    Rcpp::traits::input_parameter< int >::type R(RSEXP);
+    Rcpp::traits::input_parameter< double >::type cvi(cviSEXP);
+    Rcpp::traits::input_parameter< double >::type cva(cvaSEXP);
+    Rcpp::traits::input_parameter< double >::type cvg(cvgSEXP);
+    Rcpp::traits::input_parameter< double >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< double >::type hbhr(hbhrSEXP);
+    Rcpp::traits::input_parameter< bool >::type grand_mean(grand_meanSEXP);
+    Rcpp::traits::input_parameter< std::string >::type subject_dist_type(subject_dist_typeSEXP);
+    Rcpp::traits::input_parameter< double >::type dfi(dfiSEXP);
+    Rcpp::traits::input_parameter< double >::type dfa(dfaSEXP);
+    rcpp_result_gen = Rcpp::wrap(simulate_bv_data_ntt(n, S, R, cvi, cva, cvg, mu, hbhr, grand_mean, subject_dist_type, dfi, dfa));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_biovar_bv_anova", (DL_FUNC) &_biovar_bv_anova, 1},
-    {"_biovar_simulate_bv_data", (DL_FUNC) &_biovar_simulate_bv_data, 7},
+    {"_biovar_bv_anova", (DL_FUNC) &_biovar_bv_anova, 2},
+    {"_biovar_variance_components", (DL_FUNC) &_biovar_variance_components, 5},
+    {"_biovar_bv_anova_bootstrap_ci", (DL_FUNC) &_biovar_bv_anova_bootstrap_ci, 5},
+    {"_biovar_process_stan_data_indexing", (DL_FUNC) &_biovar_process_stan_data_indexing, 3},
+    {"_biovar_process_stan_data_priors", (DL_FUNC) &_biovar_process_stan_data_priors, 8},
+    {"_biovar_simulate_bv_data", (DL_FUNC) &_biovar_simulate_bv_data, 9},
+    {"_biovar_simulate_bv_data_ntt", (DL_FUNC) &_biovar_simulate_bv_data_ntt, 12},
     {NULL, NULL, 0}
 };
 

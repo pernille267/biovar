@@ -13,10 +13,25 @@
 #'   \item \code{ReplicateID} - \code{Integer} vector with the IDs of the replicates.
 #'   \item \code{y} - \code{Numeric} vector with the measured values for each combination of IDs.
 #' }
+#' @param cv_anova \code{logical}. If \code{TRUE}, CV-ANOVA is performed.
 #' 
 #'
-#' @description This function uses biological variation data to estimate both one-way (one model for each subject) and two-way (general model overall subjects) nested ANOVA models. 
-#' @details The components of the estimated model can be used to estimate intra biological variation, inter biological variation and analytical variation, with corresponding confidence intervals. The model estimates relies on that all model effects are mutually independent and normally distributed.
+#' @description
+#' This function uses biological variation data to estimate both one-way
+#' (one model for each subject) and two-way (general model overall subjects)
+#' nested ANOVA models. 
+#' @details
+#' The components of the estimated model can be used to estimate intra
+#' biological variation, inter biological variation and analytical variation,
+#' possibly with corresponding confidence intervals. The model estimates
+#' relies on that all model effects are mutually independent and normally
+#' distributed.
+#' 
+#' We assume the following model
+#' \eqn{y_{isr} = \mu + G_i + I_{is} + A_{isr}}, where 
+#' \eqn{G_i \sim \mathrm{N}(0, \sigma_G^2)},
+#' \eqn{I_{is} \sim \mathrm{N}(0, \sigma_i^2)}, and
+#' \eqn{A_{isr} \sim \mathrm{N}(0, \sigma_A^2)}. 
 #'
 #' @return A \code{list} containing all relevant information for the nested ANOVA model fit.
 #'
@@ -30,8 +45,326 @@
 #'
 NULL
 
-bv_anova <- function(data) {
-    .Call(`_biovar_bv_anova`, data)
+#' @title Bootstrap Confidence Intervals for ANOVA Variance Components
+#'
+#' @name bv_anova_bootstrap_ci
+#' 
+#' @param data_orig A \code{list} or \code{data.frame} containing the original data.
+#'   It must include the columns \code{SubjectID} (as integer), \code{SampleID}
+#'   (as integer), \code{ReplicateID} (as integer), and \code{y} (as numeric).
+#' @param B An \code{integer} specifying the number of bootstrap replicates to perform.
+#'   A larger number of replicates (e.g., 1000 or more) is recommended for stable
+#'   confidence intervals.
+#' @param level A \code{double} representing the desired confidence level for the
+#'   intervals (e.g., 0.95 for 95\% CIs). Defaults to 0.95.
+#' @param output_type_for_point_est A \code{character} string specifying the metric
+#'   to be estimated in each bootstrap iteration. Must be either \code{"sigma"}
+#'   (for standard deviations) or \code{"cv"} (for coefficients of variation).
+#'   The resulting CIs will correspond to this metric. Defaults to \code{"sigma"}.
+#' @param mult A \code{double} used as a scaling factor for the estimates, applied
+#'   in each bootstrap iteration. For example, set to 100 to express CVs as
+#'   percentages. Defaults to 1.0.
+#'   
+#' @description
+#' Calculates percentile bootstrap confidence intervals for variance components
+#' estimated from a three-level nested ANOVA model.
+#'
+#' @details
+#' This function implements a non-parametric case-resampling bootstrap
+#' procedure. The key steps are:
+#' \enumerate{
+#'   \item Subjects (the highest level of hierarchy) are resampled with
+#'         replacement from the original dataset.
+#'   \item For each of the \code{B} bootstrap replicates, a new dataset is
+#'         constructed by pooling all observations from the sampled subjects.
+#'   \item The \code{\link{variance_components}} function is called on this
+#'         new dataset to obtain point estimates of the variance components
+#'         (\code{sigma_A}, \code{sigma_I}, \code{sigma_G}) and the HBHR.
+#'   \item After all \code{B} replicates are completed, the confidence
+#'         intervals are calculated from the percentiles of the resulting
+#'         bootstrap distributions.
+#' }
+#' This case-resampling approach correctly accounts for the correlation
+#' structure within subjects. The process can be interrupted by the user.
+#' If any bootstrap iteration fails (e.g., due to a degenerate sample),
+#' it is skipped, and a warning is suppressed to avoid cluttering the console.
+#'
+#' @return
+#' A \code{list} with the following structure:
+#' \describe{
+#'   {\code{point_estimates}}{A \code{list} containing the point estimates of \code{sigma_A},
+#'     \code{sigma_I}, \code{sigma_G}, and \code{HBHR} calculated from the original, un-resampled data.}
+#'   {\code{conf_intervals}}{A \code{list} containing the lower and upper bounds of the
+#'     percentile bootstrap confidence intervals for each component.}
+#'   {\code{bootstrap_replicates}}{A \code{list} containing the raw numeric vectors of all
+#'     \code{B} estimates for each component. This allows for manual inspection of the
+#'     bootstrap distributions (e.g., plotting histograms).}
+#'   {\code{n_bootstrap_replicates}}{The number of bootstrap replicates (\code{B}) performed.}
+#'   {\code{confidence_level}}{The confidence level used for the intervals.}
+#' }
+#'
+#' @examples
+#' # Create a sample data list for demonstration
+#' sample_data_list <- list(
+#'   SubjectID = as.integer(rep(1:3, each = 4)),
+#'   SampleID = as.integer(rep(1:6, each = 2)),
+#'   ReplicateID = as.integer(rep(1:2, 6)),
+#'   y = c(
+#'     rnorm(2, 100, 10), rnorm(2, 105, 10), # Subject 1
+#'     rnorm(2, 120, 12), rnorm(2, 118, 12), # Subject 2
+#'     rnorm(2, 90, 8), rnorm(2, 92, 8)      # Subject 3
+#'   )
+#' )
+#'
+#' # Run bootstrap with a small number of replicates for the example
+#' # In practice, B should be >= 1000
+#' # Note: This example requires the 'variance_components' function to be available.
+#' # The call is commented out as it can be slow and depends on other functions.
+#'
+#' # bootstrap_results <- bv_anova_bootstrap_ci(
+#' #   data_orig = sample_data_list,
+#' #   B = 50, # Use a small B for speed in an example
+#' #   level = 0.95,
+#' #   output_type_for_point_est = "sigma"
+#' # )
+#'
+#' # print(bootstrap_results$point_estimates)
+#' # print(bootstrap_results$conf_intervals)
+#'
+NULL
+
+bv_anova <- function(data, cv_anova = FALSE) {
+    .Call(`_biovar_bv_anova`, data, cv_anova)
+}
+
+#' @title Estimate Variance Components and Confidence Intervals via ANOVA
+#'
+#' @name variance_components
+#'
+#' @param data A \code{list} or \code{data.frame} containing the data for the ANOVA.
+#'   It must contain columns for subject identifiers and measurement values. This
+#'   is passed to an internal ANOVA function (`bv_anova`).
+#' @param output_type A \code{character} string specifying the type of output to return.
+#'   Must be one of the following:
+#'   \describe{
+#'     {\code{"sigma"}}{Returns point estimates of the standard deviations (\code{sigma}).}
+#'     {\code{"cv"}}{Returns point estimates of the coefficients of variation (CV), calculated as sigma / grand_mean.}
+#'     {\code{"sigma_ci"}}{Returns point estimates and confidence intervals for the standard deviations.}
+#'     {\code{"cv_ci"}}{Returns point estimates and confidence intervals for the CVs.}
+#'   }
+#'   Defaults to \code{"sigma"}.
+#' @param mult A \code{double} used as a scaling factor for the final output. For
+#'   example, set to 100 to express CVs as percentages. Defaults to 1.0.
+#' @param level A \code{double} specifying the confidence level for the confidence
+#'   intervals (e.g., 0.95 for a 95\% CI). Defaults to 0.95.
+#' @param cv_anova A \code{bool}. If \code{TRUE}, the underlying ANOVA is performed on
+#'   subject-specific coefficients of variation rather than on the raw
+#'   measurement values. Defaults to \code{FALSE}.
+#'
+#' @description
+#' This function performs a three-level nested ANOVA to estimate variance
+#' components. It can return point estimates of standard deviations (sigmas),
+#' coefficients of variation (CVs), or confidence intervals for these metrics.
+#'
+#' @details
+#' The function is built on a three-level nested random-effects model, which
+#' decomposes the total variance into three components:
+#' \itemize{
+#'   \item \strong{\code{sigma_G}}: The top-level, between-subject standard deviation.
+#'   \item \strong{\code{sigma_I}}: The intermediate-level, within-subject standard deviation.
+#'   \item \strong{\code{sigma_A}}: The lowest-level, within-replicate (analytical or residual) standard deviation.
+#' }
+#' Point estimates for these components are derived from the mean squares of the
+#' ANOVA. Confidence intervals are also computed. The CI for the residual variance
+#' (\code{sigma_A}) is based on the chi-squared distribution. For the higher-level
+#' components (\code{sigma_I} and \code{sigma_G}), more complex approximate methods
+#' (generalized confidence intervals) are used, which are suitable for unbalanced data.
+#' The function also returns subject-specific point estimates and the
+#' Heterogeneity of the Biological Homeostatic Ratio (HBHR).
+#'
+#' @return A \code{list} containing the estimated components. The structure of
+#'   the first three elements depends on \code{output_type}.
+#'   \describe{
+#'     \item{\code{sigma_A}}{Analytical/residual component. A single \code{double} for point
+#'       estimates, or a 3-element \code{NumericVector} (estimate, lower CI, upper CI) for CIs.}
+#'     \item{\code{sigma_I}}{Within-subject component. A single \code{double} or a 3-element \code{NumericVector}.}
+#'     \item{\code{sigma_G}}{Between-subject component. A single \code{double} or a 3-element \code{NumericVector}.}
+#'     \item{\code{sigma_i}}{A \code{NumericVector} of point estimates for the subject-specific within-subject standard deviation.}
+#'     \item{\code{sigma_a}}{A \code{NumericVector} of point estimates for the subject-specific analytical standard deviation.}
+#'     \item{\code{HBHR}}{A \code{double} representing the Heterogeneity of the Biological Homeostatic Ratio.}
+#'   }
+#' @export
+#' @examples
+#' # Create a sample data frame for demonstration
+#' # 3 subjects, 3 time points per subject, 2 replicates per time point
+#' subject_data <- data.frame(
+#'   SubjectID = rep(c("S1", "S2", "S3"), each = 6),
+#'   Value = c(
+#'     rnorm(2, 100, 10), rnorm(2, 105, 10), rnorm(2, 98, 10),  # Subject 1
+#'     rnorm(2, 120, 12), rnorm(2, 118, 12), rnorm(2, 122, 12), # Subject 2
+#'     rnorm(2, 90, 8), rnorm(2, 92, 8), rnorm(2, 88, 8)       # Subject 3
+#'   )
+#' )
+#'
+#' # Note: In a real package, the bv_anova function would need to be available.
+#' # The following calls are illustrative of how variance_components would be used.
+#'
+#' # Get point estimates of standard deviations (sigmas)
+#' # results_sigma <- variance_components(subject_data, output_type = "sigma")
+#'
+#' # Get CVs as percentages with 95% confidence intervals
+#' # results_cv_ci <- variance_components(
+#' #   subject_data,
+#' #   output_type = "cv_ci",
+#' #   mult = 100,
+#' #   level = 0.95
+#' # )
+#'
+#' # print(results_sigma)
+#' # print(results_cv_ci)
+variance_components <- function(data, output_type = "sigma", mult = 1.0, level = 0.95, cv_anova = FALSE) {
+    .Call(`_biovar_variance_components`, data, output_type, mult, level, cv_anova)
+}
+
+bv_anova_bootstrap_ci <- function(data_orig, B, level = 0.95, output_type_for_point_est = "sigma", mult = 1.0) {
+    .Call(`_biovar_bv_anova_bootstrap_ci`, data_orig, B, level, output_type_for_point_est, mult)
+}
+
+#' Process Stan Data Indexing
+#'
+#' This function processes subject and sample data to create the necessary indexing
+#' structures for hierarchical Bayesian models in Stan. It converts character-based
+#' subject IDs to numeric indices and creates comprehensive mapping structures for
+#' efficient Stan model execution.
+#'
+#' @param SubjectID_orig_R A \code{character} vector containing subject identifiers.
+#'   Each element represents the subject ID for the corresponding observation.
+#' @param SampleID_orig_R An \code{integer} vector containing sample identifiers within
+#'   each subject. Must be positive \code{integer}s (1-based indexing).
+#' @param y_R A numeric vector containing the response variable observations.
+#'   This is passed through unchanged but must match the length of other inputs.
+#'
+#' @return A named list containing the following components for Stan model use:
+#' \describe{
+#'   \item{N_obs}{\code{integer}: Total number of observations}
+#'   \item{y}{Numeric vector: Response variable (passed through unchanged)}
+#'   \item{N_subj}{\code{integer}: Total number of unique subjects}
+#'   \item{subj_idx}{\code{integer} vector: Subject index for each observation (1-based)}
+#'   \item{N_samp_total}{\code{integer}: Total number of samples across all subjects}
+#'   \item{samp_idx}{\code{integer} vector: Global sample index for each observation}
+#'   \item{sample_to_subj_map}{\code{integer} vector: Maps global sample indices to subject indices}
+#' }
+#'
+#' @details
+#' The function performs several key transformations:
+#' \itemize{
+#'   \item Converts \code{character} subject IDs to consecutive numeric indices (1 to N_subj)
+#'   \item Calculates the maximum number of samples per subject
+#'   \item Creates global sample indexing that accounts for varying samples per subject
+#'   \item Generates a mapping from global sample indices back to subject indices
+#' }
+#'
+#' All input vectors must have identical lengths. The function includes comprehensive
+#' error checking for empty data, mismatched vector lengths, and invalid sample IDs.
+#' Sample IDs must be positive \code{integer}s starting from 1.
+#'
+#' @examples
+#' \dontrun{
+#' # Example with 3 subjects and varying samples per subject
+#' subjects <- c("A", "A", "B", "B", "B", "C")
+#' samples <- c(1, 2, 1, 2, 3, 1)
+#' responses <- c(1.2, 1.5, 2.1, 2.3, 2.0, 0.8)
+#' 
+#' result <- process_stan_data_indexing(subjects, samples, responses)
+#' print(result)
+#' }
+#'
+#' @seealso
+#' This function is designed for use with Stan models that require hierarchical
+#' indexing structures for subjects and samples.
+#'
+#' @export
+process_stan_data_indexing <- function(SubjectID_orig_R, SampleID_orig_R, y_R) {
+    .Call(`_biovar_process_stan_data_indexing`, SubjectID_orig_R, SampleID_orig_R, y_R)
+}
+
+#' @title Generate Stan Data List for Priors
+#' 
+#' @name process_stan_data_priors
+#'
+#' @param beta A \code{double} representing the expected value of the main parameter.
+#' @param cvi A \code{double} for the expected Coefficient of Variation for
+#'   individual-level variance (I), provided as a percentage (e.g., 10 for 10%).
+#'   Must be strictly positive. Defaults to 10.
+#' @param cva A \code{double} for the expected Coefficient of Variation for
+#'   assay-level variance (A), provided as a percentage. Must be strictly
+#'   positive. Defaults to 3.
+#' @param cvg A \code{double} for the expected Coefficient of Variation for
+#'   group-level variance (G), provided as a percentage. Must be strictly
+#'   positive. Defaults to 20.
+#' @param dfi A \code{double} for the expected degrees of freedom for the
+#'   individual-level t-distribution. Must be >= 2.1. Defaults to 9999.
+#' @param dfa A \code{double} for the expected degrees of freedom for the
+#'   assay-level t-distribution. Must be >= 2.1. Defaults to 9999.
+#' @param strength A \code{NumericVector} of length 6 containing non-negative
+#'   multipliers that control the "tightness" (standard deviation) of the
+#'   hyperpriors. The elements correspond to the priors for:
+#'   (1) \code{beta}, 
+#'   (2) \code{sigma_i} (mean), 
+#'   (3) \code{sigma_A},
+#'   (4) \code{sigma_G},
+#'   (5) \code{df_I} and
+#'   (6) \code{df_A}.
+#'   Defaults to \code{c(1, 1, 1, 1, 1, 1)}.
+#' @param log_transformed A \code{bool} indicating whether the underlying model
+#'   assumes the data is log-transformed. If \code{TRUE}, priors for standard
+#'   deviations (\code{sigma_I}, \code{sigma_A}, \code{sigma_G}) are calculated on the log scale.
+#'   Defaults to \code{FALSE}.
+#' 
+#' @description
+#' This function processes user-friendly prior specifications and converts them
+#' into a list of hyperparameters (means and standard deviations) suitable for
+#' a Stan model.
+#' 
+#' @details
+#' This function processes user-friendly prior specifications and converts them
+#' into a list of hyperparameters (means and standard deviations) suitable for
+#' a Stan model. It takes an expected value (\code{beta}), coefficients of variation
+#' (CVs), and degrees of freedom, and calculates the corresponding parameters
+#' for the prior distributions.
+#' 
+#' @return A \code{list} containing the calculated hyperparameters for the Stan model's priors:
+#' \describe{
+#'   \item{\code{prior_beta_mean}}{Mean for the prior on \code{beta}.}
+#'   \item{\code{prior_beta_sd}}{Standard deviation for the prior on \code{beta}.}
+#'   \item{\code{prior_sigma_i_mean_mean}}{Mean for the hyperprior on the mean of \code{sigma_i}.}
+#'   \item{\code{prior_sigma_i_mean_sd}}{SD for the hyperprior on the mean of \code{sigma_i}.}
+#'   \item{\code{prior_sigma_i_sd_mean}}{Mean for the hyperprior on the SD of \code{sigma_i}.}
+#'   \item{\code{prior_sigma_i_sd_sd}}{SD for the hyperprior on the SD of \code{sigma_i}.}
+#'   \item{\code{prior_sigma_A_mean}}{Mean for the prior on \code{sigma_A}.}
+#'   \item{\code{prior_sigma_A_sd}}{Standard deviation for the prior on \code{sigma_A}.}
+#'   \item{\code{prior_sigma_G_mean}}{Mean for the prior on \code{sigma_G}.}
+#'   \item{\code{prior_sigma_G_sd}}{Standard deviation for the prior on \code{sigma_G}.}
+#'   \item{\code{prior_df_I_mean}}{Mean for the prior on \code{df_I}.}
+#'   \item{\code{prior_df_I_sd}}{Standard deviation for the prior on \code{df_I}.}
+#'   \item{\code{prior_df_A_mean}}{Mean for the prior on \code{df_A}.}
+#'   \item{\code{prior_df_A_sd}}{Standard deviation for the prior on \code{df_A}.}
+#' }
+#'
+#' @examples
+#' # Generate priors with default settings for a beta of 100
+#' process_stan_data_priors(beta = 100)
+#'
+#' # Generate priors for a log-transformed model with tighter CVs
+#' process_stan_data_priors(beta = 7, cvi = 5, cva = 2, log_transformed = TRUE)
+#'
+#' # Increase the uncertainty (standard deviation) of the beta prior
+#' process_stan_data_priors(beta = 100, strength = c(2.0, 1, 1, 1, 1, 1))
+#'
+NULL
+
+process_stan_data_priors <- function(beta, cvi = 10, cva = 3, cvg = 20, dfi = 9999, dfa = 9999, strength = as.numeric( c(1, 1, 1, 1, 1, 1)), log_transformed = FALSE) {
+    .Call(`_biovar_process_stan_data_priors`, beta, cvi, cva, cvg, dfi, dfa, strength, log_transformed)
 }
 
 #' Simulate Biological Variation Data
@@ -46,6 +379,8 @@ bv_anova <- function(data) {
 #' @param cva \code{Double}. The coefficient of variation (in percent) for the variability of analytical error (default is 2). This is the source of variation between replicated measurements.
 #' @param cvg \code{Double}. The coefficient of variation (in percent) for variability between subjects (default is 50).
 #' @param mu \code{Double}. The overall true mean for the population (default is 100).
+#' @param hbhr \code{Double}. The Harris-Brown heterogeneity ratio (in percent) for the variability between within-subject standard deviaton.
+#' @param grand_mean \code{Boolean}. If set to \code{TRUE}, all SD-components are defined by (cv / 100) * mu. Otherwise, mu is replaced by subject-mean and sample-mean for within subject and within sample standard deviations.
 #'
 #' @description This function simulates biological variation data based on a specified number of subjects, samples, and replicates.
 #' @details This function generates simulated biological variation data. It first generates subject-specific means based on a normal distribution with mean `mu` and coefficient of variation `cvg`. For each subject, it then generates `S` samples based on their specific mean and the coefficient of variation `cvi`. Finally, for each sample, it generates `R` replicate measurements based on the sample mean and the coefficient of variation `cva`.
@@ -67,7 +402,93 @@ bv_anova <- function(data) {
 #'
 NULL
 
-simulate_bv_data <- function(n, S = 10L, R = 2L, cvi = 10, cva = 2, cvg = 50, mu = 10) {
-    .Call(`_biovar_simulate_bv_data`, n, S, R, cvi, cva, cvg, mu)
+simulate_bv_data <- function(n, S = 10L, R = 2L, cvi = 10, cva = 2, cvg = 50, mu = 100, hbhr = 0, grand_mean = TRUE) {
+    .Call(`_biovar_simulate_bv_data`, n, S, R, cvi, cva, cvg, mu, hbhr, grand_mean)
+}
+
+#' Simulate Biological Variation Data with Extended Options
+#'
+#' @title Simulate Biological Variation Data From NTT Model
+#' @name simulate_bv_data_ntt
+#'
+#' @param n \code{Integer}. The number of subjects.
+#' @param S \code{Integer}. The number of samples taken from each subject. Defaults to 10.
+#' @param R \code{Integer}. The number of replicates measured for each sample. Defaults to 2.
+#' @param cvi \code{Double}. The coefficient of variation (in percent) for variability within each subject (default is 10).
+#' @param cva \code{Double}. The coefficient of variation (in percent) for the variability of analytical error (default is 2).
+#' @param cvg \code{Double}. The coefficient of variation (in percent) for variability between subjects (default is 50).
+#' @param mu \code{Double}. The overall true mean for the population (default is 100). Must be non-negative.
+#' @param hbhr \code{Double}. The Harris-Brown heterogeneity ratio (in percent) for the variability of within-subject standard deviations. Default is 0.
+#' @param grand_mean \code{Boolean}. If \code{TRUE}, SD-components are based on `mu`. Otherwise, on subject/sample-specific means. Default is \code{TRUE}.
+#' @param subject_dist_type \code{String}. Distribution for subject means: "normal" (results in folded normal via `std::abs()`), "truncnormal" (truncated at 0), or "lognormal". Default is "normal".
+#' @param dfi \code{Double}. Degrees of freedom for Student's t-distribution of samples within subjects. Use `R_PosInf` (or `Inf`) for normal distribution. Default is `R_PosInf`. Must be > 0.
+#' @param dfa \code{Double}. Degrees of freedom for Student's t-distribution of analytical replicates. Use `R_PosInf` (or `Inf`) for normal distribution. Default is `R_PosInf`. Must be > 0.
+#'
+#' @description
+#' This function simulates biological variation data with options for different distributions
+#' for subject means, within-subject variation, and analytical variation.
+#' 
+#' @details
+#' \strong{Subject-Specific Means (`subject_means[i]`):}
+#' Generated based on `mu`, `cvg`, and `subject_dist_type`:
+#' \itemize{
+#'   \item \code{"normal"}: `subject_means[i] = std::abs(R::rnorm(mu, sd_g))`, where `sd_g = (cvg/100) * mu`. This creates a folded normal distribution.
+#'   \item \code{"truncnormal"}: `subject_means[i]` is drawn from `N(mu, sd_g)` truncated at 0. `sd_g = (cvg/100) * mu`. Values are inherently non-negative.
+#'   \item \code{"lognormal"}: `subject_means[i]` is drawn from a log-normal distribution such that its arithmetic mean is `mu` and arithmetic CV is `cvg/100`. Values are inherently non-negative. `mu` must be > 0.
+#' }
+#' All `subject_means[i]` are thus non-negative.
+#'
+#' \strong{Samples within Subjects (`sample_val`):}
+#' Drawn from a location-scale Student's t-distribution (or normal if `dfi = Inf`).
+#' Location: `current_subject_mean`.
+#' The "nominal SD" (`sdi_nominal`) is determined by `cvi` and potentially `hbhr`.
+#'   - `mean_for_sdi_calc = grand_mean ? mu : current_subject_mean`
+#'   - `mean_nominal_sdi = (cvi/100) * mean_for_sdi_calc`
+#'   - `sd_for_nominal_sdi_draw = mean_nominal_sdi * (hbhr/100)`
+#'   - `sdi_nominal = std::abs(R::rnorm(mean_nominal_sdi, sd_for_nominal_sdi_draw))`
+#' Scale parameter for t-distribution (`actual_scale_s`):
+#' \itemize{
+#'   \item If `dfi == Inf` (normal): `actual_scale_s = sdi_nominal`. Draw from `N(current_subject_mean, actual_scale_s)`.
+#'   \item If `dfi > 2`: `actual_scale_s = sdi_nominal / sqrt(dfi / (dfi - 2.0))`. Draw `current_subject_mean + actual_scale_s * R::rt(1, dfi)`. `sdi_nominal` is the target SD.
+#'   \item If `0 < dfi <= 2`: `actual_scale_s = sdi_nominal`. Draw `current_subject_mean + actual_scale_s * R::rt(1, dfi)`. `sdi_nominal` is used as the scale parameter directly; the resulting distribution has infinite variance (or undefined for `dfi <= 1`).
+#' }
+#' Then, `sample_val = std::abs(raw_sample_val)`.
+#'
+#' \strong{Replicates within Samples (`replicate_val`):}
+#' Drawn similarly using `cva`, `dfa`, and `sample_val` (or `mu` if `grand_mean`).
+#' The "nominal SD" (`sva_nominal`) is `(cva/100) * (grand_mean ? mu : sample_val)`.
+#' Scale parameter for t-distribution (`actual_scale_a`) is determined analogously to `actual_scale_s` using `sva_nominal` and `dfa`.
+#' Then, `replicate_val = std::abs(raw_replicate_val)`.
+#'
+#' All final measured values (`y`) are non-negative due to `std::abs()`, resulting in folded-t or folded-normal distributions.
+#'
+#' @return A `DataFrame` with columns: `SubjectID`, `SampleID`, `ReplicateID`, `y`.
+#'
+#' @examples
+#' \dontrun{
+#' # Default (normal distributions for all components)
+#' df_norm <- simulate_bv_data_extended(15, 10, 2, mu = 100)
+#' summary(df_norm$y)
+#'
+#' # Student's t for samples (dfi=3) and replicates (dfa=5)
+#' # R_PosInf can be passed as Inf from R
+#' df_t <- simulate_bv_data_extended(15, 10, 2, mu = 100, dfi = 3, dfa = 5)
+#' summary(df_t$y)
+#'
+#' # Log-normal subject means
+#' df_lognorm_subj <- simulate_bv_data_extended(15, 10, 2, mu = 100,
+#'                                            subject_dist_type = "lognormal")
+#' summary(df_lognorm_subj$y)
+#'
+#' # Truncated normal subject means, t-dist for samples, grand_mean=FALSE
+#' df_mix <- simulate_bv_data_extended(n = 50, S = 5, R = 2,
+#'                                   cvi = 15, cva = 3, cvg = 60, mu = 50,
+#'                                   hbhr = 20, grand_mean = FALSE,
+#'                                   subject_dist_type = "truncnormal", dfi = 4.0, dfa = Inf)
+#' summary(df_mix$y)
+#' }
+#'
+simulate_bv_data_ntt <- function(n, S = 10L, R = 2L, cvi = 10.0, cva = 2.0, cvg = 50.0, mu = 100.0, hbhr = 0.0, grand_mean = TRUE, subject_dist_type = "normal", dfi = 99999999, dfa = 99999999) {
+    .Call(`_biovar_simulate_bv_data_ntt`, n, S, R, cvi, cva, cvg, mu, hbhr, grand_mean, subject_dist_type, dfi, dfa)
 }
 
