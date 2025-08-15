@@ -2,82 +2,54 @@
 % Please edit documentation in R/process_stan_output.R
 \name{plot_subject_specific_CVI}
 \alias{plot_subject_specific_CVI}
-\title{Plot Subject-Specific Within-Subject Coefficients of Variation}
+\title{Plot Subject-Specific Intra-Individual CVs}
 \usage{
 plot_subject_specific_CVI(
-  fit,
-  log_transformed,
-  analyte = "X",
-  group = "Y",
+  processed_output,
   data = NULL,
-  digits = 1L
+  color_by = NULL,
+  shape_by = NULL,
+  title = "Subject-Specific CVs with 95\% Credible Intervals",
+  subtitle = NULL
 )
 }
 \arguments{
-\item{fit}{An object containing the posterior draws from the Stan model. Passed directly to \code{\link{process_stan_output}}.}
+\item{processed_output}{A \code{list} object returned by
+\code{process_stan_output}. The function specifically uses the
+`Subject_Specific` data.table.}
 
-\item{log_transformed}{A \code{logical} value indicating if the model was fitted on log-transformed data. Passed directly to \code{\link{process_stan_output}}.}
+\item{data}{An optional \code{data.frame} or \code{data.table} containing the
+original input data. This is **required** if you want to use the
+\code{color_by} or \code{shape_by} arguments, as it must contain the
+grouping columns.}
 
-\item{analyte}{A \code{character} string for the measurand label. Passed directly to \code{\link{process_stan_output}}.}
+\item{color_by}{A \code{character} string specifying the column name in `data`
+to use for coloring the points (e.g., `"sex"`). Defaults to `NULL` (no color grouping).}
 
-\item{group}{A \code{character} string for the group label. Passed directly to \code{\link{process_stan_output}}.}
+\item{shape_by}{A \code{character} string specifying the column name in `data`
+to use for shaping the points (e.g., `"material"`). Defaults to `NULL` (no shape grouping).}
 
-\item{data}{An optional \code{data.frame} or \code{data.table} with original subject IDs. Passed directly to \code{\link{process_stan_output}}.}
+\item{title}{A \code{character} string for the plot title. Defaults to a
+standard title.}
 
-\item{digits}{An \code{integer} for rounding. Passed directly to \code{\link{process_stan_output}}.}
+\item{subtitle}{A \code{character} string for the plot subtitle. Can be used
+to provide context like the analyte name.}
 }
 \value{
-A \code{ggplot2} object representing the plot. This can be further
-  customized by the user (e.g., by adding themes or other layers).
+A \code{ggplot} object, which can be further customized.
 }
 \description{
-Generates a caterpillar plot visualizing the median and 95% credible intervals
-for the subject-specific within-subject CV (\code{CVp(i)}).
+Creates a dot-and-whisker plot visualizing the 95% credible intervals for
+the intra-individual CV (`CVI`) for each subject. It includes reference lines
+for the population predictive distribution and allows for flexible grouping
+by color and shape.
 }
 \details{
-This function first calls \code{\link{process_stan_output}} to get the
-processed data. It then uses the subject-specific results (the second element
-of the returned list) to create a \code{ggplot2} object.
-
-The plot displays:
-\itemize{
-  \item A point for each subject's median \code{CVp(i)}.
-  \item Horizontal error bars representing the 95% credible interval for each subject's \code{CVp(i)}.
-  \item Vertical red lines indicating the population-level distribution of the
-    predictive within-subject CV (solid line for the median, dashed lines for the
-    20th and 80th percentiles). In other words, the 60% prediction interval.
-}
-Subjects are ordered on the y-axis by their median \code{CVp(i)}.
-}
-\examples{
-# This is a mock example as it requires a real Stan fit object.
-# 1. Create a fake 'fit' object with the required structure
-n_subjects <- 10
-n_draws <- 1000
-fake_fit <- list(
-  beta = rnorm(n_draws, 100, 5),
-  sigma_I = rlnorm(n_draws, log(10), 0.1),
-  sigma_A = rlnorm(n_draws, log(3), 0.1),
-  sigma_G = rlnorm(n_draws, log(15), 0.1),
-  sigma_I_pred = rlnorm(n_draws, log(10), 0.2),
-  sigma_i = matrix(rlnorm(n_draws * n_subjects, log(10), 0.3), nrow = n_draws),
-  df_I = rep(30, n_draws),
-  df_A = rep(50, n_draws),
-  G_raw = matrix(0, nrow = 1, ncol = n_subjects), # For counting
-  I_raw = matrix(0, nrow = 1, ncol = n_subjects * 3) # For counting
-)
-
-# 2. Generate the plot
-p <- plot_subject_specific_CVI(
-  fit = fake_fit,
-  log_transformed = FALSE,
-  analyte = "Testosterone",
-  group = "Healthy Adults"
-)
-
-# print(p) # Uncomment to display the plot
-
-}
-\seealso{
-\code{\link{process_stan_output}} which generates the data for this plot.
+The plot is designed for clear visual comparison of individual CVI estimates.
+-   **Points and Error Bars:** The central point for each subject represents their
+    median posterior CVI, and the horizontal bars represent the 95% credible interval.
+-   **Green Reference Band:** The shaded green area represents the 60% prediction
+    interval for a new subject's CVI (from the 20th to the 80th percentile).
+    The solid green line is the median of this predictive distribution.
+-   **Ordering:** Subjects are ordered from bottom to top by their median CVI.
 }

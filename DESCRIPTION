@@ -9,8 +9,9 @@ Description: Estimates biological variation components and allows for Monte Carl
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports: 
-  Rcpp (>= 1.0.11),
-  data.table,
-  ggplot2
+    Rcpp (>= 1.0.11),
+    data.table,
+    ggplot2,
+    tools
 LinkingTo: Rcpp, RcppArmadillo
 RoxygenNote: 7.3.2
