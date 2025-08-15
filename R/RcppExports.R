@@ -92,15 +92,15 @@ NULL
 #' @return
 #' A \code{list} with the following structure:
 #' \describe{
-#'   {\code{point_estimates}}{A \code{list} containing the point estimates of \code{sigma_A},
+#'   \item{\code{point_estimates}}{A \code{list} containing the point estimates of \code{sigma_A},
 #'     \code{sigma_I}, \code{sigma_G}, and \code{HBHR} calculated from the original, un-resampled data.}
-#'   {\code{conf_intervals}}{A \code{list} containing the lower and upper bounds of the
+#'   \item{\code{conf_intervals}}{A \code{list} containing the lower and upper bounds of the
 #'     percentile bootstrap confidence intervals for each component.}
-#'   {\code{bootstrap_replicates}}{A \code{list} containing the raw numeric vectors of all
+#'   \item{\code{bootstrap_replicates}}{A \code{list} containing the raw numeric vectors of all
 #'     \code{B} estimates for each component. This allows for manual inspection of the
 #'     bootstrap distributions (e.g., plotting histograms).}
-#'   {\code{n_bootstrap_replicates}}{The number of bootstrap replicates (\code{B}) performed.}
-#'   {\code{confidence_level}}{The confidence level used for the intervals.}
+#'   \item{\code{n_bootstrap_replicates}}{The number of bootstrap replicates (\code{B}) performed.}
+#'   \item{\code{confidence_level}}{The confidence level used for the intervals.}
 #' }
 #'
 #' @examples
@@ -147,10 +147,10 @@ bv_anova <- function(data, cv_anova = FALSE) {
 #' @param output_type A \code{character} string specifying the type of output to return.
 #'   Must be one of the following:
 #'   \describe{
-#'     {\code{"sigma"}}{Returns point estimates of the standard deviations (\code{sigma}).}
-#'     {\code{"cv"}}{Returns point estimates of the coefficients of variation (CV), calculated as sigma / grand_mean.}
-#'     {\code{"sigma_ci"}}{Returns point estimates and confidence intervals for the standard deviations.}
-#'     {\code{"cv_ci"}}{Returns point estimates and confidence intervals for the CVs.}
+#'     \item{\code{sigma}}{Returns point estimates of the standard deviations (\code{sigma}).}
+#'     \item{\code{cv}}{Returns point estimates of the coefficients of variation (CV), calculated as sigma / grand_mean.}
+#'     \item{\code{sigma_ci}}{Returns point estimates and confidence intervals for the standard deviations.}
+#'     \item{\code{cv_ci}}{Returns point estimates and confidence intervals for the CVs.}
 #'   }
 #'   Defaults to \code{"sigma"}.
 #' @param mult A \code{double} used as a scaling factor for the final output. For

@@ -8,6 +8,8 @@ process_stan_output(
   fit,
   log_transformed,
   analyte = "X",
+  material = "Unknown",
+  sex = "Unknown",
   group = "Y",
   data = NULL,
   digits = 1L
@@ -26,6 +28,10 @@ back-transformed. CV calculations are also adjusted accordingly.}
 
 \item{analyte}{A \code{character} string used to label the measurand in the
 output tables. Defaults to "X".}
+
+\item{material}{A \code{character} string to label the biological material.}
+
+\item{sex}{A \code{character} string to label the sex. Defaults to "Unknown".}
 
 \item{group}{A \code{character} string used to label the group or cohort in
 the output tables. Defaults to "Y".}
@@ -66,21 +72,31 @@ It handles calculations differently depending on whether the model was run on a
 log-transformed scale. The function also computes the distribution of the
 predictive within-subject CV (\code{dCV_P(i)}) and the heterogeneity of this
 distribution (HBHR).
+}
+\section{Calculation of CVs}{
 
-\strong{Important Note on Model Validity:}
-The reliability of the metrics produced by this function depends entirely
-on the quality and convergence of the Stan model fit. The \code{fit} object is
-typically the result of \code{rstan::extract(your_stanfit_object)}. Before
-trusting the output of this function, it is essential to perform standard MCMC
-diagnostics. Key checks include:
+The method for calculating CVs depends on the \code{log_transformed} flag.
 \itemize{
-  \item Verifying that there are no divergent transitions after warmup.
-  \item Checking for transitions that exceeded the maximum treedepth.
-  \item Ensuring that the R-hat (potential scale reduction factor) for all parameters is close to 1.0 (e.g., < 1.01).
-  \item Confirming that the effective sample size (\code{n_eff}) is sufficiently large for all parameters of interest.
+  \item \strong{If \code{log_transformed = TRUE}:} The function assumes that
+    variance components (\code{sigma} parameters) are on the natural log scale.
+    It uses the appropriate formulas to convert these into CVs on the original
+    scale. For parameters with Student-t distributions (\code{sigma_I}, \code{sigma_A}),
+    it accounts for the degrees of freedom (\code{df}).
+  \item \strong{If \code{log_transformed = FALSE}:} The function assumes a model on the
+    identity scale. CVs are calculated as \code{sd / mean * 100}. The standard
+    deviation for t-distributed parameters is derived from the scale parameter
+    (\code{sigma}) and degrees of freedom (\code{df}).
 }
-These diagnostics can be checked by inspecting the summary of the original \code{stanfit} object.
 }
+
+\section{Important Note on Model Validity}{
+
+The reliability of the metrics produced by this function depends entirely
+on the quality and convergence of the Stan model fit. Before trusting the
+output, it is essential to perform standard MCMC diagnostics (e.g., check for
+divergent transitions, R-hat < 1.01, and sufficient \code{n_eff}).
+}
+
 \seealso{
 \code{\link{plot_subject_specific_CVI}} for visualizing the results.
 }

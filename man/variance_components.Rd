@@ -20,10 +20,10 @@ is passed to an internal ANOVA function (`bv_anova`).}
 \item{output_type}{A \code{character} string specifying the type of output to return.
 Must be one of the following:
 \describe{
-  {\code{"sigma"}}{Returns point estimates of the standard deviations (\code{sigma}).}
-  {\code{"cv"}}{Returns point estimates of the coefficients of variation (CV), calculated as sigma / grand_mean.}
-  {\code{"sigma_ci"}}{Returns point estimates and confidence intervals for the standard deviations.}
-  {\code{"cv_ci"}}{Returns point estimates and confidence intervals for the CVs.}
+  \item{\code{sigma}}{Returns point estimates of the standard deviations (\code{sigma}).}
+  \item{\code{cv}}{Returns point estimates of the coefficients of variation (CV), calculated as sigma / grand_mean.}
+  \item{\code{sigma_ci}}{Returns point estimates and confidence intervals for the standard deviations.}
+  \item{\code{cv_ci}}{Returns point estimates and confidence intervals for the CVs.}
 }
 Defaults to \code{"sigma"}.}
 

@@ -27,15 +27,15 @@ percentages. Defaults to 1.0.}
 \value{
 A \code{list} with the following structure:
 \describe{
-  {\code{point_estimates}}{A \code{list} containing the point estimates of \code{sigma_A},
+  \item{\code{point_estimates}}{A \code{list} containing the point estimates of \code{sigma_A},
     \code{sigma_I}, \code{sigma_G}, and \code{HBHR} calculated from the original, un-resampled data.}
-  {\code{conf_intervals}}{A \code{list} containing the lower and upper bounds of the
+  \item{\code{conf_intervals}}{A \code{list} containing the lower and upper bounds of the
     percentile bootstrap confidence intervals for each component.}
-  {\code{bootstrap_replicates}}{A \code{list} containing the raw numeric vectors of all
+  \item{\code{bootstrap_replicates}}{A \code{list} containing the raw numeric vectors of all
     \code{B} estimates for each component. This allows for manual inspection of the
     bootstrap distributions (e.g., plotting histograms).}
-  {\code{n_bootstrap_replicates}}{The number of bootstrap replicates (\code{B}) performed.}
-  {\code{confidence_level}}{The confidence level used for the intervals.}
+  \item{\code{n_bootstrap_replicates}}{The number of bootstrap replicates (\code{B}) performed.}
+  \item{\code{confidence_level}}{The confidence level used for the intervals.}
 }
 }
 \description{

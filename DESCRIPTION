@@ -5,12 +5,13 @@ Version: 1.0
 Date: 2024-06-11
 Author: Pernille Kjeilen Fauskanger
 Maintainer: Pernille Kjeilen Fauskanger <yourfault@somewhere.net>
-Description: Estimates biological variation components and allows for Monte Carlo simulations and Bayesian modelling
+Description: Estimates biological variation components and allows for Monte Carlo simulations and Bayesian modelling.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports: 
-  Rcpp (>= 1.0.11),
-  data.table,
-  ggplot2
+    Rcpp (>= 1.0.11),
+    data.table,
+    ggplot2,
+    tools
 LinkingTo: Rcpp, RcppArmadillo
 RoxygenNote: 7.3.2
