@@ -2,7 +2,7 @@
 % Please edit documentation in R/process_stan_output.R
 \name{plot_subject_specific_CVI}
 \alias{plot_subject_specific_CVI}
-\title{Plot Subject-Specific Intra-Individual CVs}
+\title{Plot Subject-Specific (Within Individual) CVs}
 \usage{
 plot_subject_specific_CVI(
   processed_output,
@@ -10,7 +10,8 @@ plot_subject_specific_CVI(
   color_by = NULL,
   shape_by = NULL,
   title = "Subject-Specific CVs with 95\% Credible Intervals",
-  subtitle = NULL
+  subtitle = NULL,
+  against_concentration = FALSE
 )
 }
 \arguments{
@@ -34,6 +35,10 @@ standard title.}
 
 \item{subtitle}{A \code{character} string for the plot subtitle. Can be used
 to provide context like the analyte name.}
+
+\item{against_concentration}{A \code{logical} value. If \code{TRUE},
+estimated concentration values for the subjects are plotted against CVs
+instead of subject-specific CV values plotted against subject IDs.}
 }
 \value{
 A \code{ggplot} object, which can be further customized.

@@ -42,19 +42,25 @@ calculate_cvs_log_scale <- function(fit) {
   
   # --- Apply transformations to posterior draws ---
   beta_pred <- exp(fit$beta)
+
   cv_I <- logt_scale_to_cv(fit$sigma_I, mean_df_I)
+  cv_I_sd <- logt_scale_to_cv(fit$sigma_I_sd, mean_df_I)
   cv_A <- logt_scale_to_cv(fit$sigma_A, mean_df_A)
   cv_G <- lognormal_sd_to_cv(fit$sigma_G)
   cv_I_pred <- lognormal_sd_to_cv(fit$sigma_I_pred)
-  
-  # For individual CVs (CV_pi), this is a matrix operation.
-  # We apply the log-t transform to each column of fit$sigma_i.
-  # Since fit$sigma_i is (draws x subjects), this is already vectorized.
+  sd_I_pred <- fit$sigma_I_pred
   cv_pi <- logt_scale_to_cv(fit$sigma_i, mean_df_I)
-  
+  mu_pi <- exp(fit$G + mean(fit$beta))
   return(list(
-    beta_pred = beta_pred, cv_I = cv_I, cv_A = cv_A, cv_G = cv_G,
-    cv_I_pred = cv_I_pred, cv_pi = cv_pi
+    beta_pred = beta_pred,
+    mu_pi = mu_pi,
+    cv_I = cv_I,
+    cv_I_sd = cv_I_sd,
+    cv_A = cv_A,
+    cv_G = cv_G,
+    cv_I_pred = cv_I_pred,
+    sd_I_pred = sd_I_pred,
+    cv_pi = cv_pi
   ))
 }
 
@@ -83,7 +89,10 @@ calculate_cvs_identity_scale <- function(fit) {
   beta_pred <- fit$beta
   
   # These are population-average estimates
-  cv_I <- calculate_cv(t_scale_to_sd(fit$sigma_I, mean_df_I), mean_beta)
+  sd_I <- t_scale_to_sd(fit$sigma_I, mean_df_I)
+  sd_I_sd <- t_scale_to_sd(fit$sigma_I_sd, mean_df_I)
+  cv_I <- calculate_cv(sd_I, mean_beta)
+  cv_I_sd <- calculate_cv(sd_I_sd, mean_beta)
   cv_A <- calculate_cv(t_scale_to_sd(fit$sigma_A, mean_df_A), mean_beta)
   cv_G <- calculate_cv(fit$sigma_G, mean_beta)
   
@@ -92,12 +101,17 @@ calculate_cvs_identity_scale <- function(fit) {
   sds_i <- t_scale_to_sd(fit$sigma_i, mean_df_I)
   cv_pi <- t(t(sds_i) / mu_i) * 100
   
+  mu_pi <- fit$G + mean_beta
+  
   return(list(
-    beta_pred = beta_pred, 
-    cv_I = cv_I, 
+    beta_pred = beta_pred,
+    mu_pi = mu_pi,
+    cv_I = cv_I,
+    cv_I_sd = cv_I_sd,
     cv_A = cv_A, 
     cv_G = cv_G,
     cv_I_pred = cv_I_pred,
+    sd_I_pred = sd_new_subject,
     cv_pi = cv_pi
   ))
 }
@@ -196,7 +210,9 @@ process_stan_output <- function(fit, log_transformed, analyte = "X", material = 
     "dCV_P(i) 50% (20%-80%) %" = format_ci(quantile(cvs$cv_I_pred, c(0.50, 0.20, 0.80)), digits),
     "CVG (95% CrI) %" = format_ci(c(mean(cvs$cv_G), quantile(cvs$cv_G, c(0.025, 0.975))), digits),
     "CVA (95% CrI) %" = format_ci(c(mean(cvs$cv_A), quantile(cvs$cv_A, c(0.025, 0.975))), digits),
-    "HBHR %" = format(sd(cvs$cv_I_pred) / mean(cvs$cv_I_pred) * 100, nsmall = 1, digits = 1)
+    "Estimated HBHR %" = format(mean(cvs$cv_I_sd) / mean(cvs$cv_I) * 100, nsmsall = 1, digits = 1),
+    "Predicted SD HBHR %" = format(sd(cvs$sd_I_pred) / mean(cvs$sd_I_pred) * 100, nsmall = 1, digits = 1),
+    "Predicted CV HBHR %" = format(sd(cvs$cv_I_pred) / mean(cvs$cv_I_pred) * 100, nsmall = 1, digits = 1)
   )
   
   # --- Build Subject-Specific Table (Table 2) ---
@@ -223,6 +239,31 @@ process_stan_output <- function(fit, log_transformed, analyte = "X", material = 
     `dCV_P(i)_lwr` = quantile(cvs$cv_I_pred, 0.20),
     `dCV_P(i)_upr` = quantile(cvs$cv_I_pred, 0.80)
   )]
+  
+  # Add concentration
+  table2_conc <- data.table::melt(
+    data.table(cvs$mu_pi),
+    measure.vars = 1:ncol(cvs$mu_pi),
+    variable.name = "SubjectIndex",
+    value.name = "mu_pi"
+  )
+  
+  # Convert V1, V2 -> 1, 2
+  table2_conc[, SubjectIndex := as.integer(gsub("V", "", SubjectIndex))]
+  
+  # Summarize by subject
+  table2_conc <- table2_conc[, .(
+    `concentration_mean_P(i)` = mean(mu_pi),
+    `concentration_median_P(i)` = median(mu_pi),
+    `concentration_P(i)_lwr` = quantile(mu_pi, 0.025),
+    `concentration_P(i)_upr` = quantile(mu_pi, 0.975)
+  ), by = SubjectIndex]
+  
+  table2 <- merge.data.table(
+    x = table2,
+    y = table2_conc,
+    by = "SubjectIndex"
+  )
   
   # Add subject labels if provided
   if (!is.null(data)) {
@@ -254,7 +295,7 @@ process_stan_output <- function(fit, log_transformed, analyte = "X", material = 
   return(list("Summary" = table1, "Subject_Specific" = table2, "Degrees_of_Freedom" = table3))
 }
 
-#' Plot Subject-Specific Intra-Individual CVs
+#' Plot Subject-Specific (Within Individual) CVs
 #'
 #' Creates a dot-and-whisker plot visualizing the 95% credible intervals for
 #' the intra-individual CV (`CVI`) for each subject. It includes reference lines
@@ -276,6 +317,9 @@ process_stan_output <- function(fit, log_transformed, analyte = "X", material = 
 #'   standard title.
 #' @param subtitle A \code{character} string for the plot subtitle. Can be used
 #'   to provide context like the analyte name.
+#' @param against_concentration A \code{logical} value. If \code{TRUE},
+#'   estimated concentration values for the subjects are plotted against CVs
+#'   instead of subject-specific CV values plotted against subject IDs.  
 #'
 #' @details
 #' The plot is designed for clear visual comparison of individual CVI estimates.
@@ -289,10 +333,13 @@ process_stan_output <- function(fit, log_transformed, analyte = "X", material = 
 #' @return A \code{ggplot} object, which can be further customized.
 #'
 #' @export
-plot_subject_specific_CVI <- function(processed_output, data = NULL,
-                                      color_by = NULL, shape_by = NULL,
+plot_subject_specific_CVI <- function(processed_output,
+                                      data = NULL,
+                                      color_by = NULL,
+                                      shape_by = NULL,
                                       title = "Subject-Specific CVs with 95% Credible Intervals",
-                                      subtitle = NULL) {
+                                      subtitle = NULL,
+                                      against_concentration = FALSE) {
   
   # --- 1. Input Validation and Data Preparation ---
   if (!"Subject_Specific" %in% names(processed_output)) {
@@ -319,7 +366,7 @@ plot_subject_specific_CVI <- function(processed_output, data = NULL,
     plotting_data <- merge(plotting_data, subject_metadata, by = "SubjectID", all.x = TRUE)
   }
   
-  # --- FIX: Re-sort the data by median CV AFTER the merge ---
+  # --- Re-sort the data by median CV AFTER the merge ---
   # This ensures the y-axis is ordered correctly from lowest to highest CV.
   data.table::setorder(plotting_data, `median_CV_P(i)`)
   
@@ -327,25 +374,124 @@ plot_subject_specific_CVI <- function(processed_output, data = NULL,
   plotting_data[, SubjectID := factor(SubjectID, levels = unique(SubjectID))]
   
   # --- 2. Build the ggplot object ---
-  p <- ggplot(data = plotting_data, aes(y = SubjectID))
   
+  if (against_concentration) {
+    
+    p <- ggplot(data = plotting_data, aes(x = `concentration_median_P(i)`))
+    pop_summary <- unique(plotting_data[, .(`dCV_P(i)_lwr`,
+                                            `dCV_P(i)_upr`,
+                                            `dCV_P(i)_median`)])
+    p <- p + geom_rect(
+      mapping = aes(
+        xmin = -Inf,
+        xmax = Inf,
+        ymin = pop_summary$`dCV_P(i)_lwr`[1],
+        ymax = pop_summary$`dCV_P(i)_upr`[1]
+      ),
+      fill = "#28A745",
+      alpha = 0.1,
+      inherit.aes = FALSE
+    ) +
+      geom_hline(
+        yintercept = c(
+          pop_summary$`dCV_P(i)_lwr`[1],
+          pop_summary$`dCV_P(i)_median`[1],
+          pop_summary$`dCV_P(i)_upr`[1]
+        ),
+        color = "#1a702e",
+        linewidth = 1.0
+      )
+    
+    p <- p + geom_errorbar(
+      mapping = aes(
+        ymin = `CV_P(i)_lwr`,
+        ymax = `CV_P(i)_upr`
+      ),
+      height = 0.5,
+      linewidth = 0.75,
+      color = "black"
+    )
+    
+    point_aes <- aes(y = `median_CV_P(i)`)
+    if (!is.null(color_by)) {
+      point_aes$fill <- as.symbol(color_by)
+    }
+    if (!is.null(shape_by)) {
+      point_aes$shape <- as.symbol(shape_by)
+    }
+    
+    p <- p + geom_point(
+      mapping = point_aes,
+      size = 3,
+      color = "black",
+      shape = if (is.null(shape_by)) 21 else NA,
+      fill = if (is.null(color_by)) "#A7288A" else NA
+    )
+    
+    p <- p +
+      scale_x_continuous(
+        name = "Concentration",
+        labels = function(x) format(x, nsmall = 1, digits = 1),
+        n.breaks = 8
+      ) +
+      scale_y_continuous(
+        name = expression(paste("Within-Individual CV (", CV[p(i)], ", %)")),
+        labels = function(y) paste0(format(y, nsmall = 1, digits = 1), " %"),
+        n.breaks = 8
+      ) +
+      labs(title = title, subtitle = subtitle) +
+      theme_classic() +
+      theme(
+        plot.title = element_text(face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+        legend.position = "bottom",
+        legend.title = element_text(face = "bold"),
+        axis.text = element_text(color = "black"),
+        axis.title = element_text(face = "bold")
+      )
+    
+    return(p)  
+      
+  }
+  
+  p <- ggplot(data = plotting_data, aes(y = SubjectID))
   pop_summary <- unique(plotting_data[, .(`dCV_P(i)_lwr`, `dCV_P(i)_upr`, `dCV_P(i)_median`)])
   p <- p +
     geom_rect(
-      aes(xmin = pop_summary$`dCV_P(i)_lwr`, xmax = pop_summary$`dCV_P(i)_upr`, ymin = -Inf, ymax = Inf),
-      fill = "#28A745", alpha = 0.3, inherit.aes = FALSE
+      aes(xmin = pop_summary$`dCV_P(i)_lwr`,
+          xmax = pop_summary$`dCV_P(i)_upr`,
+          ymin = -Inf, ymax = Inf),
+      fill = "#28A745",
+      alpha = 0.1,
+      inherit.aes = FALSE
     ) +
     geom_vline(
       xintercept = c(pop_summary$`dCV_P(i)_lwr`,
                      pop_summary$`dCV_P(i)_median`,
                      pop_summary$`dCV_P(i)_upr`),
-      color = "#1a702e", linewidth = 1.0
+      color = "#1a702e",
+      linewidth = 1.0
     )
   
   p <- p + geom_errorbarh(
     aes(xmin = `CV_P(i)_lwr`, xmax = `CV_P(i)_upr`),
-    height = 0.5, linewidth = 0.75, color = "gray20"
+    height = 0.5, linewidth = 0.75, color = "black"
   )
+  
+  if (!is.null(color_by)) {
+    plotting_data[, (color_by) := as.factor(get(color_by))]
+    p <- p + scale_fill_brewer(palette = "Set2", name = toTitleCase(color_by))
+  } else {
+    p <- p + scale_fill_manual(values = "orange", guide = "none")
+  }
+  
+  if (!is.null(shape_by)) {
+    plotting_data[, (shape_by) := as.factor(get(shape_by))]
+    p <- p + scale_shape_manual(
+      values = c(21, 22, 24, 25),
+      name = toTitleCase(shape_by)
+    )
+  }
   
   # --- 3. Dynamically add point aesthetics ---
   point_aes <- aes(x = `median_CV_P(i)`)
@@ -359,8 +505,9 @@ plot_subject_specific_CVI <- function(processed_output, data = NULL,
   p <- p + geom_point(
     mapping = point_aes,
     size = 3,
-    color = "gray20",
-    shape = if (is.null(shape_by)) 21 else NA
+    color = "black",
+    shape = if (is.null(shape_by)) 21 else NA,
+    fill = if (is.null(color_by)) "#A7288A" else NA
   )
   
   # --- 4. Customize scales, labels, and theme ---

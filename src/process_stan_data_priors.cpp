@@ -100,7 +100,7 @@ List process_stan_data_priors(double beta, double cvi = 10, double cva = 3, doub
     Rcpp::stop("dfa (hyper for E[df_A]) must be larger than or equal to 2.1");
   }
   
-  for (int i = 0; i < strength_length; ++i) {
+  for (int i = 1; i < strength_length; ++i) {
     if (strength[i] < 0) {
       Rcpp::stop("Each element of strength must be non-negative");
     }
@@ -127,6 +127,10 @@ List process_stan_data_priors(double beta, double cvi = 10, double cva = 3, doub
     sigma_I_prior = CV_I_prior * beta_prior;
     sigma_A_prior = CV_A_prior * beta_prior;
     sigma_G_prior = CV_G_prior * beta_prior;
+  }
+  
+  if (beta_prior < 0) {
+    strength[0] = strength[0] * (-1.0);
   }
   
   return List::create(
