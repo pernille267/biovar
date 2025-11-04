@@ -129,24 +129,20 @@ List process_stan_data_priors(double beta, double cvi = 10, double cva = 3, doub
     sigma_G_prior = CV_G_prior * beta_prior;
   }
   
-  if (beta_prior < 0) {
-    strength[0] = strength[0] * (-1.0);
-  }
-  
   return List::create(
     Named("prior_beta_mean") = beta_prior,
-    Named("prior_beta_sd") = strength[0] * beta_prior,
+    Named("prior_beta_sd") = strength[0] * std::abs(beta_prior),
     Named("prior_sigma_i_mean_mean") = sigma_I_prior,
     Named("prior_sigma_i_mean_sd") = strength[1] * sigma_I_prior,
     Named("prior_sigma_i_sd_mean") = 0.5 * sigma_I_prior,
-    Named("prior_sigma_i_sd_sd") = 2 * sigma_I_prior,
+    Named("prior_sigma_i_sd_sd") = 2.0/3.0 * sigma_I_prior,
     Named("prior_sigma_A_mean") = sigma_A_prior,
     Named("prior_sigma_A_sd") = strength[2] * sigma_A_prior,
     Named("prior_sigma_G_mean") = sigma_G_prior,
     Named("prior_sigma_G_sd") = strength[3] * sigma_G_prior,
-    Named("prior_df_I_mean") = dfi,
+    Named("prior_df_I_mean") = dfi - 2.0,
     Named("prior_df_I_sd") = strength[4] * dfi,
-    Named("prior_df_A_mean") = dfa,
+    Named("prior_df_A_mean") = dfa - 2.0,
     Named("prior_df_A_sd") = strength[5] * dfa
   );
   

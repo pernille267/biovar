@@ -13,6 +13,7 @@ Imports:
     data.table,
     ggplot2,
     tools,
-    truncnorm
+    truncnorm,
+    cowplot
 LinkingTo: Rcpp, RcppArmadillo
 RoxygenNote: 7.3.2

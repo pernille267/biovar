@@ -101,6 +101,7 @@ calculate_cvs_identity_scale <- function(fit) {
   sds_i <- t_scale_to_sd(fit$sigma_i, mean_df_I)
   cv_pi <- t(t(sds_i) / mu_i) * 100
   
+  # Extract homostatic set point samples
   mu_pi <- fit$G + mean_beta
   
   return(list(
@@ -210,7 +211,7 @@ process_stan_output <- function(fit, log_transformed, analyte = "X", material = 
     "dCV_P(i) 50% (20%-80%) %" = format_ci(quantile(cvs$cv_I_pred, c(0.50, 0.20, 0.80)), digits),
     "CVG (95% CrI) %" = format_ci(c(mean(cvs$cv_G), quantile(cvs$cv_G, c(0.025, 0.975))), digits),
     "CVA (95% CrI) %" = format_ci(c(mean(cvs$cv_A), quantile(cvs$cv_A, c(0.025, 0.975))), digits),
-    "Estimated HBHR %" = format(mean(cvs$cv_I_sd) / mean(cvs$cv_I) * 100, nsmsall = 1, digits = 1),
+    "Estimated HBHR %" = format(mean(cvs$cv_I_sd) / mean(cvs$cv_I) * 100, nsmall = 1, digits = 1),
     "Predicted SD HBHR %" = format(sd(cvs$sd_I_pred) / mean(cvs$sd_I_pred) * 100, nsmall = 1, digits = 1),
     "Predicted CV HBHR %" = format(sd(cvs$cv_I_pred) / mean(cvs$cv_I_pred) * 100, nsmall = 1, digits = 1)
   )
@@ -291,7 +292,21 @@ process_stan_output <- function(fit, log_transformed, analyte = "X", material = 
     "Mean DFA (95% CrI)" = format_ci(c(mean(fit$df_A), quantile(fit$df_A, c(0.025, 0.975))), digits)
   )
   
-  # --- 5. Return Results ---
+  # --- 5. Build Samples Table (Table 4) ---
+  table4 <- data.table(
+    "Measurand" = analyte,
+    "Sex" = sex,          
+    "Material" = material,
+    "Group" = group,
+    "beta" = cvs$beta_pred,
+    "mean_cvi" = cvs$cv_I,
+    "sd_cvi" = cvs$cv_I_sd,
+    "pred_cvi" = cvs$cv_I_pred,
+    "cva" = cvs$cv_A,
+    "cvg" = cvs$cv_G
+  )
+  
+  # --- 6. Return Results ---
   return(list("Summary" = table1, "Subject_Specific" = table2, "Degrees_of_Freedom" = table3))
 }
 
